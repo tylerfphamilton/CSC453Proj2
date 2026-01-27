@@ -104,6 +104,8 @@ typedef struct {
     int size;             // Current queue size
 } ReadyQueue;
 
+
+
 /************************* FUNCTION PROTOTYPES *************************/
 
 // File operations
@@ -146,6 +148,9 @@ const char* algorithm_name(Algorithm algorithm);
 void parse_arguments(int argc, char *argv[], Algorithm *algorithm, int *cpu_count, 
                     int *time_quantum, char **input_file);
 
+
+// BIG GLOBAL, YAY
+ReadyQueue FCFSQ;
 /************************* QUEUE OPERATIONS *************************/
 
 /**
@@ -411,7 +416,8 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
 
         // FCFS
         if (algorithm == 0){
-
+            //add the index of the process (in processes, in the FCSFQ)
+            enqueue(&FCFSQ , arrived_indices[idx]);
             // need to add it to a queue somehow (there is only a rr queue)
             
 
@@ -438,11 +444,7 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
         // need to increment the number of arrival_cont and add it to the arrival_indeices (at the end)
 
             
-        }
-
-
-
-
+    }
 }
 
 /**
@@ -459,7 +461,12 @@ void handle_rr_quantum_expiry(Process *processes, CPU *cpus, int cpu_count, int 
  */
 void handle_srtf_preemption(Process *processes, int process_count, CPU *cpus, int cpu_count, int current_time) {
     // TODO: Implement preemption logic for SRTF: replace running processes if a ready process is shorter
-    // Consider priority as a tiebreaker when remaining times are equal (PID #)
+    // Consider priority as a tiebreaker when remaining times are equal
+    if (processes == NULL || cpus == NULL){
+        perror("There is an issue at the beginning of handle_srtf_preemption()");
+    }
+
+    
 }
 
 /**
@@ -578,6 +585,10 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         int arrived_indices[MAX_PROCESSES];
         int arrival_count = 0;
         handle_arrivals(processes, process_count, current_time, algorithm, arrived_indices, &arrival_count);
+        for (int i = 0 ; i < arrival_count ; i ++){
+            printf("%d ", processes[arrived_indices[i]]);
+        }
+        printf("current arrivals: ");
 
         // Enqueue newly arrived processes for Round Robin
         if (algorithm == RR) {
@@ -845,6 +856,7 @@ void print_results(Process *processes, int process_count, CPU *cpus, int cpu_cou
 /************************* MAIN FUNCTION *************************/
 
 int main(int argc, char *argv[]) {
+    init_queue(&FCFSQ);
     Algorithm algorithm = FCFS;
     int cpu_count = 1;
     int time_quantum = DEFAULT_TIME_QUANTUM;
