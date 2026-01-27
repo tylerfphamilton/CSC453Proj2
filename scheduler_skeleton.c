@@ -386,7 +386,63 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
                    int *arrived_indices, int *arrival_count) {
     // TODO: Find and record processes that have arrived at the current time
     // Remember to handle state transitions appropriately for each algorithm type
-    *arrival_count = 0; // Initialize arrival count
+    // FCFS = 0, RR = 1, SRTF (preemptive) = 2, SJF (non-preemptive) = 3
+    if (processes == NULL || arrived_indices == NULL || arrival_count == NULL){
+        perror("There was a variable that was NULL in the handle_arrivals function");
+        return;
+    }
+
+    // need to loop through the current processes, check to see if the time matches with the current time and check to see if the state is in WAITING
+    for (int i = 0; i < process_count; i++){
+
+        if (processes[i].arrival_time == current_time && processes[i].state == WAITING){
+
+            if (*arrival_count < MAX_PROCESSES){   
+                processes[i].state = READY;         
+                arrived_indices[*arrival_count] = i;
+                processes[i].quantum_used = 0;          // for RR
+                (*arrival_count)++; 
+            }
+        }
+    }
+    
+    // need to ask what to do here (how do I add to queue and the other data structures. If not doing this, what do I do in this part?)
+    for (int idx = 0; idx < *arrival_count; idx++){
+
+        // FCFS
+        if (algorithm == 0){
+
+            // need to add it to a queue somehow (there is only a rr queue)
+            
+
+        }
+        // RR
+        else if (algorithm == 1){
+
+
+
+        }
+        else if (algorithm == 2){
+
+
+
+        }
+        else if (algorithm == 3){
+
+
+
+        }
+        else {
+            // algorithm number is incorrect (do something)
+        }
+        // need to increment the number of arrival_cont and add it to the arrival_indeices (at the end)
+
+            
+        }
+
+
+
+
 }
 
 /**
@@ -403,7 +459,7 @@ void handle_rr_quantum_expiry(Process *processes, CPU *cpus, int cpu_count, int 
  */
 void handle_srtf_preemption(Process *processes, int process_count, CPU *cpus, int cpu_count, int current_time) {
     // TODO: Implement preemption logic for SRTF: replace running processes if a ready process is shorter
-    // Consider priority as a tiebreaker when remaining times are equal
+    // Consider priority as a tiebreaker when remaining times are equal (PID #)
 }
 
 /**
