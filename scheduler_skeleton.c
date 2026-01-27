@@ -400,9 +400,9 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
     // need to loop through the current processes, check to see if the time matches with the current time and check to see if the state is in WAITING
     for (int i = 0; i < process_count; i++){
 
-        if (processes[i].arrival_time == current_time && processes[i].state == WAITING){
+        if (processes[i].arrival_time == current_time){
 
-            if (*arrival_count < MAX_PROCESSES){   
+            if (*arrival_count < MAX_PROCESSES){  
                 processes[i].state = READY;         
                 arrived_indices[*arrival_count] = i;
                 processes[i].quantum_used = 0;          // for RR
@@ -479,9 +479,10 @@ void assign_processes_to_idle_cpus(Process *processes, int process_count, CPU *c
     // Be careful not to assign the same process to multiple CPUs
 
     for (int c = 0; c < cpu_count; c++) {
-        if (cpus[c].current_process != NULL) continue;
+        if (cpus[c].current_process != NULL) continue; //if null, don't skip
 
-        int idx = dequeue(ready_queue);
+        int idx = dequeue(&FCFSQ);
+        printf("dequeued idx: %d \n", idx);
         if (idx == -1) break;
 
         Process *p = &processes[idx];
@@ -575,7 +576,7 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
            algorithm == RR ? ", Quantum=" : "");
     if (algorithm == RR) printf("%d", time_quantum);
     printf("\n");
-
+    int bruh = 0;
     // Main Simulation Loop
     while (completed_count < process_count) {
         // TODO: Complete the simulation loop
@@ -588,7 +589,9 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         for (int i = 0 ; i < arrival_count ; i ++){
             printf("%d ", processes[arrived_indices[i]]);
         }
-        printf("current arrivals: ");
+        printf("OOOGAGAA");
+        printf("current arrivals: %d\n", arrival_count);
+        printf("current time: %d\n", current_time);
 
         // Enqueue newly arrived processes for Round Robin
         if (algorithm == RR) {
@@ -606,6 +609,8 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         // Assign processes to idle CPUs
         assign_processes_to_idle_cpus(processes, process_count, cpus, cpu_count, algorithm,
                                    &ready_queue_rr, current_time);
+        
+        printf("cpu is currently doing: %d ", cpus[0].current_process);
 
         // Update timeline
         if (current_time >= timeline_capacity) {
@@ -628,6 +633,10 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         // Safety break to prevent infinite loops
         if (current_time > timeline_capacity * 5 && completed_count < process_count) {
             fprintf(stderr, "Warning: Simulation exceeded maximum expected time. Aborting.\n");
+            break;
+        }
+        bruh ++;
+        if (bruh > 100){
             break;
         }
     }
