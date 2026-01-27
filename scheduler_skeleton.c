@@ -481,8 +481,12 @@ void assign_processes_to_idle_cpus(Process *processes, int process_count, CPU *c
     for (int c = 0; c < cpu_count; c++) {
         if (cpus[c].current_process != NULL) continue; //if null, don't skip
 
-        int idx = dequeue(&FCFSQ);
-        printf("dequeued idx: %d \n", idx);
+        if (algorithm == FCFS){
+            int idx = dequeue(&FCFSQ);
+        } else {
+            continue; //implement the rest later
+        }
+
         if (idx == -1) break;
 
         Process *p = &processes[idx];
