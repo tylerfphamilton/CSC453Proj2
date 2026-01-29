@@ -165,6 +165,17 @@ void init_queue(ReadyQueue *q) {
 /**
  * Add a process index to the ready queue
  */
+
+ static void print_queue(const ReadyQueue *q) {
+    printf("Q front=%d rear=%d size=%d: ", q->front, q->rear, q->size);
+    for (int k = 0; k < q->size; k++) {
+        int idx = (q->front + k) % MAX_PROCESSES;
+        printf("%d ", q->process_indices[idx]);
+    }
+    printf("\n");
+}
+
+
 void enqueue(ReadyQueue *q, int process_idx) {
     if (q->size >= MAX_PROCESSES) {
         fprintf(stderr, "Error: Ready queue overflow!\n");
@@ -173,56 +184,62 @@ void enqueue(ReadyQueue *q, int process_idx) {
     q->rear = (q->rear + 1) % MAX_PROCESSES;
     q->process_indices[q->rear] = process_idx;
     q->size++;
-    for (int i = 0 ; i < q->size ; i++ ){
-        printf("current state of queue: %d\n" , (q->process_indices)[i]);
-    }
+    //print_queue(q);
 }
 
 void enqueue_priority(ReadyQueue *q, int process_idx , Process *processes){
-    printf("priority got called\n");
     if (q->size >= MAX_PROCESSES) {
         fprintf(stderr, "Error: Ready queue overflow!\n");
         return;
     }
-    if (q -> rear == -1){
+
+    if (q->rear == -1){
         enqueue(q , process_idx);
-        printf("YAYAYAYA");
         return;
     }
 
-    int cur = (q->front) % MAX_PROCESSES;
+    int cur = q->front; 
     int new_time = processes[process_idx].burst_time;
     int new_priority = processes[process_idx].priority; 
-    while (cur != ((q->rear) + 1) % MAX_PROCESSES){
-        int cur_time = processes[(q -> process_indices)[cur]].burst_time;
-        int cur_priority = processes[(q ->process_indices)[cur]].priority;
-        if (new_time < cur_time || (new_time == cur_time && new_priority > cur_priority)){
+
+    // scan queue from front to rear
+    while (cur != (q->rear + 1) % MAX_PROCESSES){
+        int cur_time = processes[q->process_indices[cur]].burst_time;
+        int cur_priority = processes[q->process_indices[cur]].priority;
+
+        if (new_time < cur_time || 
+           (new_time == cur_time && new_priority > cur_priority)){
             break;
         }
         cur = (cur + 1) % MAX_PROCESSES;
     }
-    q->rear = (q->rear + 1) % MAX_PROCESSES;
 
-    if (q->rear == cur){
+    if (cur == (q->rear + 1) % MAX_PROCESSES){  
         enqueue(q , process_idx);
         return;
     }
 
-    int temp = (q -> process_indices)[cur];
-    (q -> process_indices)[cur] = process_idx;
+    q->rear = (q->rear + 1) % MAX_PROCESSES;    
+
+    int temp = q->process_indices[cur];
+    q->process_indices[cur] = process_idx;
+
     int temp2;
-    while (cur != (q-> rear % MAX_PROCESSES)){
-        temp2 = (q -> process_indices)[cur + 1];
-        (q -> process_indices)[cur + 1] = temp;
+    int nextcur = (cur + 1) % MAX_PROCESSES;
+
+    while (cur != q->rear){                      // FIX: clearer stop condition
+        temp2 = q->process_indices[nextcur];
+        q->process_indices[nextcur] = temp;
         temp = temp2;
-        cur = (cur + 1) % MAX_PROCESSES;
+
+        cur = nextcur;                        
+        nextcur = (cur + 1) % MAX_PROCESSES;  
     }
+
     q->size++;
-    for (int i = 0 ; i < q->size ; i++ ){
-        printf("current state of queue: %d\n" , (q->process_indices)[i]);
-    }
-    
+    //print_queue(q);
 }
+
 
 /**
  * Remove and return the next process index from the ready queue
@@ -637,9 +654,6 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         int arrived_indices[MAX_PROCESSES];
         int arrival_count = 0;
         handle_arrivals(processes, process_count, current_time, algorithm, arrived_indices, &arrival_count);
-        for (int i = 0 ; i < arrival_count ; i ++){
-            printf("%d ", processes[arrived_indices[i]]);
-        }
         //printf("OOOGAGAA");
         //printf("current arrivals: %d\n", arrival_count);
         //printf("current time: %d\n", current_time);
