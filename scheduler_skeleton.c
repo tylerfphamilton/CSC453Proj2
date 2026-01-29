@@ -173,6 +173,55 @@ void enqueue(ReadyQueue *q, int process_idx) {
     q->rear = (q->rear + 1) % MAX_PROCESSES;
     q->process_indices[q->rear] = process_idx;
     q->size++;
+    for (int i = 0 ; i < q->size ; i++ ){
+        printf("current state of queue: %d\n" , (q->process_indices)[i]);
+    }
+}
+
+void enqueue_priority(ReadyQueue *q, int process_idx , Process *processes){
+    printf("priority got called\n");
+    if (q->size >= MAX_PROCESSES) {
+        fprintf(stderr, "Error: Ready queue overflow!\n");
+        return;
+    }
+    if (q -> rear == -1){
+        enqueue(q , process_idx);
+        printf("YAYAYAYA");
+        return;
+    }
+
+    int cur = (q->front) % MAX_PROCESSES;
+    int new_time = processes[process_idx].burst_time;
+    int new_priority = processes[process_idx].priority; 
+    while (cur != ((q->rear) + 1) % MAX_PROCESSES){
+        int cur_time = processes[(q -> process_indices)[cur]].burst_time;
+        int cur_priority = processes[(q ->process_indices)[cur]].priority;
+        if (new_time < cur_time || (new_time == cur_time && new_priority > cur_priority)){
+            break;
+        }
+        cur = (cur + 1) % MAX_PROCESSES;
+    }
+    q->rear = (q->rear + 1) % MAX_PROCESSES;
+
+    if (q->rear == cur){
+        enqueue(q , process_idx);
+        return;
+    }
+
+    int temp = (q -> process_indices)[cur];
+    (q -> process_indices)[cur] = process_idx;
+    int temp2;
+    while (cur != (q-> rear % MAX_PROCESSES)){
+        temp2 = (q -> process_indices)[cur + 1];
+        (q -> process_indices)[cur + 1] = temp;
+        temp = temp2;
+        cur = (cur + 1) % MAX_PROCESSES;
+    }
+    q->size++;
+    for (int i = 0 ; i < q->size ; i++ ){
+        printf("current state of queue: %d\n" , (q->process_indices)[i]);
+    }
+    
 }
 
 /**
@@ -306,6 +355,8 @@ void parse_arguments(int argc, char *argv[], Algorithm *algorithm, int *cpu_coun
     }
 }
 
+
+
 /************************* PROCESS LOADING *************************/
 
 /**
@@ -425,16 +476,16 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
         // RR
         else if (algorithm == 1){
 
-
+            
 
         }
         else if (algorithm == 2){
 
-
+            
 
         }
-        else if (algorithm == 3){
-
+        else if (algorithm == 3){ //SJF
+            enqueue_priority(&FCFSQ , arrived_indices[idx] , processes);
 
 
         }
@@ -481,11 +532,7 @@ void assign_processes_to_idle_cpus(Process *processes, int process_count, CPU *c
     for (int c = 0; c < cpu_count; c++) {
         if (cpus[c].current_process != NULL) continue; //if null, don't skip
 
-        if (algorithm == FCFS){
-            int idx = dequeue(&FCFSQ);
-        } else {
-            continue; //implement the rest later
-        }
+        int idx = dequeue(&FCFSQ);
 
         if (idx == -1) break;
 
@@ -593,9 +640,9 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         for (int i = 0 ; i < arrival_count ; i ++){
             printf("%d ", processes[arrived_indices[i]]);
         }
-        printf("OOOGAGAA");
-        printf("current arrivals: %d\n", arrival_count);
-        printf("current time: %d\n", current_time);
+        //printf("OOOGAGAA");
+        //printf("current arrivals: %d\n", arrival_count);
+        //printf("current time: %d\n", current_time);
 
         // Enqueue newly arrived processes for Round Robin
         if (algorithm == RR) {
@@ -614,7 +661,7 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         assign_processes_to_idle_cpus(processes, process_count, cpus, cpu_count, algorithm,
                                    &ready_queue_rr, current_time);
         
-        printf("cpu is currently doing: %d ", cpus[0].current_process);
+        //printf("cpu is currently doing: %d ", cpus[0].current_process);
 
         // Update timeline
         if (current_time >= timeline_capacity) {
