@@ -199,12 +199,12 @@ void enqueue_priority(ReadyQueue *q, int process_idx , Process *processes){
     }
 
     int cur = q->front; 
-    int new_time = processes[process_idx].burst_time;
+    int new_time = processes[process_idx].remaining_time;
     int new_priority = processes[process_idx].priority; 
 
     // scan queue from front to rear
     while (cur != (q->rear + 1) % MAX_PROCESSES){
-        int cur_time = processes[q->process_indices[cur]].burst_time;
+        int cur_time = processes[q->process_indices[cur]].remaining_time;
         int cur_priority = processes[q->process_indices[cur]].priority;
 
         if (new_time < cur_time || 
