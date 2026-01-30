@@ -149,7 +149,7 @@ void parse_arguments(int argc, char *argv[], Algorithm *algorithm, int *cpu_coun
                     int *time_quantum, char **input_file);
 
 
-// BIG GLOBAL, YAY
+// GLOBAL QUEUE
 ReadyQueue FCFSQ;
 /************************* QUEUE OPERATIONS *************************/
 
@@ -490,12 +490,14 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
             
 
         }
-        // RR
-        else if (algorithm == 1){
+        // Not sure if we need RR enqueuing because it does it in simulate because
+        // // RR
+        // else if (algorithm == 1){
 
             
 
-        }
+        // }
+
         else if (algorithm == 2){
 
             
@@ -521,7 +523,36 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
 void handle_rr_quantum_expiry(Process *processes, CPU *cpus, int cpu_count, int time_quantum,
                            ReadyQueue *ready_queue, int current_time) {
     // TODO: Move Round Robin processes back to the queue when their quantum expires
-    (void)current_time; // Explicitly mark as unused
+
+
+    // use FCFSQ
+    // loop through the CPU list and check to see if it has been running for too
+    // Process *current = dequeue(&FCFSQ);
+    for (int i = 0; i < cpu_count; i++){
+
+        if (cpus[i].current_process == NULL){
+            continue;
+        }
+
+        // if there is still time left and if it is still running
+        if (cpus[i].current_process->remaining_time > 0 && cpus[i].current_process->state == RUNNING){
+
+            // get the current process
+            Process *curr = cpus[i].current_process;
+            
+            // if the quantum used is greater than the max quantum time, put it to the back of the list
+            if (curr->quantum_used >= time_quantum){
+
+                // resetting time quantum
+                curr->quantum_used = 0;
+                curr->state = READY;
+                int curr_idx = curr - processes;
+                enqueue(&FCFSQ, curr_idx);
+                cpus[i].current_process = NULL;   
+            }
+        }
+    }
+    // (void)current_time; // Explicitly mark as unused
 }
 
 /**
@@ -598,6 +629,7 @@ void execute_processes(Process *processes, int process_count, CPU *cpus, int cpu
             Process *p = cpus[c].current_process;
             p->remaining_time--;
             cpus[c].busy_time++;
+            p->quantum_used++;
 
             if (p->remaining_time <= 0) {
                 p->finish_time = current_time + 1; // +1 because time is incremented after execution
@@ -661,7 +693,8 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         // Enqueue newly arrived processes for Round Robin
         if (algorithm == RR) {
             for (int i = 0; i < arrival_count; i++) {
-                enqueue(&ready_queue_rr, arrived_indices[i]);
+                // enqueue(&ready_queue_rr, arrived_indices[i]);
+                enqueue(&FCFSQ, arrived_indices[i]);
             }
             handle_rr_quantum_expiry(processes, cpus, cpu_count, time_quantum, &ready_queue_rr, current_time);
         }
