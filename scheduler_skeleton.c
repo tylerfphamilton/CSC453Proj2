@@ -90,6 +90,7 @@ typedef struct {
 typedef struct {
     int id;               // CPU identifier
     Process *current_process; // Process currently running (NULL if idle)
+    int idx;
     int idle_time;        // Total time CPU was idle
     int busy_time;        // Total time CPU was busy
 } CPU;
@@ -201,14 +202,17 @@ void enqueue_priority(ReadyQueue *q, int process_idx , Process *processes){
     int cur = q->front; 
     int new_time = processes[process_idx].remaining_time;
     int new_priority = processes[process_idx].priority; 
+    int new_pid = processes[process_idx].pid;
 
     // scan queue from front to rear
     while (cur != (q->rear + 1) % MAX_PROCESSES){
         int cur_time = processes[q->process_indices[cur]].remaining_time;
         int cur_priority = processes[q->process_indices[cur]].priority;
+        int cur_pid = processes[q->process_indices[cur]].pid;
 
         if (new_time < cur_time || 
-           (new_time == cur_time && new_priority > cur_priority)){
+           (new_time == cur_time && new_priority > cur_priority)
+            || (new_time == cur_time && new_priority == cur_priority && new_pid < cur_pid)){
             break;
         }
         cur = (cur + 1) % MAX_PROCESSES;
@@ -240,6 +244,61 @@ void enqueue_priority(ReadyQueue *q, int process_idx , Process *processes){
     //print_queue(q);
 }
 
+void enqueue_priority2(ReadyQueue *q, int process_idx , Process *processes){
+    if (q->size >= MAX_PROCESSES) {
+        fprintf(stderr, "Error: Ready queue overflow!\n");
+        return;
+    }
+
+    if (q->rear == -1){
+        enqueue(q , process_idx);
+        return;
+    }
+
+    int cur = q->front; 
+    int new_time = processes[process_idx].arrival_time;
+    int new_priority = processes[process_idx].priority; 
+    int new_pid = processes[process_idx].pid;
+
+    // scan queue from front to rear
+    while (cur != (q->rear + 1) % MAX_PROCESSES){
+        int cur_time = processes[q->process_indices[cur]].arrival_time;
+        int cur_priority = processes[q->process_indices[cur]].priority;
+        int cur_pid = processes[q->process_indices[cur]].pid;
+
+        if ( (new_time == cur_time) && (
+           (new_priority > cur_priority)
+            || (new_priority == cur_priority && new_pid < cur_pid))){
+            break;
+        }
+        cur = (cur + 1) % MAX_PROCESSES;
+    }
+
+    if (cur == (q->rear + 1) % MAX_PROCESSES){  
+        enqueue(q , process_idx);
+        return;
+    }
+
+    q->rear = (q->rear + 1) % MAX_PROCESSES;    
+
+    int temp = q->process_indices[cur];
+    q->process_indices[cur] = process_idx;
+
+    int temp2;
+    int nextcur = (cur + 1) % MAX_PROCESSES;
+
+    while (cur != q->rear){                      // FIX: clearer stop condition
+        temp2 = q->process_indices[nextcur];
+        q->process_indices[nextcur] = temp;
+        temp = temp2;
+
+        cur = nextcur;                        
+        nextcur = (cur + 1) % MAX_PROCESSES;  
+    }
+
+    q->size++;
+    //print_queue(q);
+}
 
 /**
  * Remove and return the next process index from the ready queue
@@ -485,7 +544,7 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
         // FCFS
         if (algorithm == 0){
             //add the index of the process (in processes, in the FCSFQ)
-            enqueue(&FCFSQ , arrived_indices[idx]);
+            enqueue_priority2(&FCFSQ , arrived_indices[idx], processes);
             // need to add it to a queue somehow (there is only a rr queue)
             
 
@@ -500,7 +559,7 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
 
         else if (algorithm == 2){
 
-            
+            enqueue_priority(&FCFSQ , arrived_indices[idx] , processes);
 
         }
         else if (algorithm == 3){ //SJF
@@ -564,7 +623,38 @@ void handle_srtf_preemption(Process *processes, int process_count, CPU *cpus, in
     if (processes == NULL || cpus == NULL){
         perror("There is an issue at the beginning of handle_srtf_preemption()");
     }
+    int idx = dequeue(&FCFSQ);
+    if (idx == -1) return;
 
+    Process *p = &processes[idx];
+
+
+    for (int c = 0; c < cpu_count ; c++){
+        int next_remaining = p -> remaining_time;
+        int next_priority = p -> priority;
+        Process *cur = cpus[c].current_process;
+        if (cur == NULL) continue;
+        int cur_remaining = cur -> remaining_time;
+        int cur_priority = cur -> priority;
+
+        if (cur_remaining < next_remaining || 
+            (cur_remaining == next_remaining && cur_priority > next_priority) ||
+        (cur_remaining == next_remaining && cur_priority == next_priority && cur -> pid < p -> pid)) continue;
+        printf("kicked something out cpu index is: %d time is: %d\n" , c, current_time);
+        printf("incoming to cpu is %d with priority %d\n" , next_remaining , next_priority);
+        cpus[c].current_process = p;
+        p -> state = RUNNING;
+        if (p->start_time == -1) {
+            p->start_time = current_time;
+            p->response_time = current_time - p->arrival_time;
+        }
+        cur -> state = WAITING;
+        enqueue_priority(&FCFSQ , cpus[c].idx, processes);
+        cpus[c].idx = idx;
+        idx = dequeue(&FCFSQ); //this will never return -1
+        p = &processes[idx];
+    }
+    enqueue_priority(&FCFSQ , idx , processes);
     
 }
 
@@ -592,6 +682,7 @@ void assign_processes_to_idle_cpus(Process *processes, int process_count, CPU *c
         }
 
         cpus[c].current_process = p;
+        cpus[c].idx = idx;
         p->state = RUNNING;
 
         if (p->start_time == -1) {
@@ -699,14 +790,16 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
             handle_rr_quantum_expiry(processes, cpus, cpu_count, time_quantum, &ready_queue_rr, current_time);
         }
 
-        // Handle SRTF preemption
-        if (algorithm == SRTF) {
-            handle_srtf_preemption(processes, process_count, cpus, cpu_count, current_time);
-        }
+
 
         // Assign processes to idle CPUs
         assign_processes_to_idle_cpus(processes, process_count, cpus, cpu_count, algorithm,
                                    &ready_queue_rr, current_time);
+        
+                                           // Handle SRTF preemption
+        if (algorithm == SRTF) {
+            handle_srtf_preemption(processes, process_count, cpus, cpu_count, current_time);
+        }
         
         //printf("cpu is currently doing: %d ", cpus[0].current_process);
 
