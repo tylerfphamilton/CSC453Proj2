@@ -241,7 +241,6 @@ void enqueue_priority(ReadyQueue *q, int process_idx , Process *processes){
     }
 
     q->size++;
-    //print_queue(q);
 }
 
 void enqueue_priority2(ReadyQueue *q, int process_idx , Process *processes){
@@ -542,37 +541,25 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
     for (int idx = 0; idx < *arrival_count; idx++){
 
         // FCFS
-        if (algorithm == 0){
+        if (algorithm == FCFS){
             //add the index of the process (in processes, in the FCSFQ)
             enqueue_priority2(&FCFSQ , arrived_indices[idx], processes);
-            // need to add it to a queue somehow (there is only a rr queue)
-            
-
         }
-        // Not sure if we need RR enqueuing because it does it in simulate because
-        // // RR
-        // else if (algorithm == 1){
-
-            
-
-        // }
-
-        else if (algorithm == 2){
+        else if (algorithm == RR){
+            // do nothing for RR (it enqueues in simulate)
+        }
+        // SRTF (preemptive)
+        else if (algorithm == SRTF){
 
             enqueue_priority(&FCFSQ , arrived_indices[idx] , processes);
-
         }
-        else if (algorithm == 3){ //SJF
+        else if (algorithm == SJF){ //SJF
             enqueue_priority(&FCFSQ , arrived_indices[idx] , processes);
-
-
         }
         else {
             // algorithm number is incorrect (do something)
-        }
-        // need to increment the number of arrival_cont and add it to the arrival_indeices (at the end)
-
-            
+            perror("Wrong algorithm type");
+        }   
     }
 }
 
@@ -625,7 +612,6 @@ void handle_srtf_preemption(Process *processes, int process_count, CPU *cpus, in
 
     Process *p = &processes[idx];
 
-
     for (int c = 0; c < cpu_count ; c++){
         int next_remaining = p -> remaining_time;
         int next_priority = p -> priority;
@@ -652,7 +638,6 @@ void handle_srtf_preemption(Process *processes, int process_count, CPU *cpus, in
         p = &processes[idx];
     }
     enqueue_priority(&FCFSQ , idx , processes);
-    
 }
 
 /**
