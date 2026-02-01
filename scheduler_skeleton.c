@@ -582,11 +582,8 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
 void handle_rr_quantum_expiry(Process *processes, CPU *cpus, int cpu_count, int time_quantum,
                            ReadyQueue *ready_queue, int current_time) {
     // TODO: Move Round Robin processes back to the queue when their quantum expires
-
-
     // use FCFSQ
     // loop through the CPU list and check to see if it has been running for too
-    // Process *current = dequeue(&FCFSQ);
     for (int i = 0; i < cpu_count; i++){
 
         if (cpus[i].current_process == NULL){
