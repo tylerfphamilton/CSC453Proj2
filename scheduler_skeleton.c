@@ -185,7 +185,6 @@ void enqueue(ReadyQueue *q, int process_idx) {
     q->rear = (q->rear + 1) % MAX_PROCESSES;
     q->process_indices[q->rear] = process_idx;
     q->size++;
-    //print_queue(q);
 }
 
 void enqueue_priority(ReadyQueue *q, int process_idx , Process *processes){
