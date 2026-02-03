@@ -167,14 +167,14 @@ void init_queue(ReadyQueue *q) {
  * Add a process index to the ready queue
  */
 
- static void print_queue(const ReadyQueue *q) {
-    printf("Q front=%d rear=%d size=%d: ", q->front, q->rear, q->size);
-    for (int k = 0; k < q->size; k++) {
-        int idx = (q->front + k) % MAX_PROCESSES;
-        printf("%d ", q->process_indices[idx]);
-    }
-    printf("\n");
-}
+//  static void print_queue(const ReadyQueue *q) {
+//     printf("Q front=%d rear=%d size=%d: ", q->front, q->rear, q->size);
+//     for (int k = 0; k < q->size; k++) {
+//         int idx = (q->front + k) % MAX_PROCESSES;
+//         printf("%d ", q->process_indices[idx]);
+//     }
+//     printf("\n");
+// }
 
 
 void enqueue(ReadyQueue *q, int process_idx) {
@@ -628,6 +628,9 @@ void handle_arrivals(Process *processes, int process_count, int current_time, Al
 void handle_rr_quantum_expiry(Process *processes, CPU *cpus, int cpu_count, int time_quantum,
                            ReadyQueue *ready_queue, int current_time) {
     // TODO: Move Round Robin processes back to the queue when their quantum expires
+
+    (void) ready_queue;
+    (void) current_time;
     // use FCFSQ
     // loop through the CPU list and check to see if it has been running for too
     for (int i = 0; i < cpu_count; i++){
@@ -663,6 +666,8 @@ void handle_rr_quantum_expiry(Process *processes, CPU *cpus, int cpu_count, int 
 void handle_srtf_preemption(Process *processes, int process_count, CPU *cpus, int cpu_count, int current_time) {
     // TODO: Implement preemption logic for SRTF: replace running processes if a ready process is shorter
     // Consider priority as a tiebreaker when remaining times are equal
+    (void) process_count;
+
     if (processes == NULL || cpus == NULL){
         perror("There is an issue at the beginning of handle_srtf_preemption()");
     }
@@ -705,6 +710,10 @@ void handle_srtf_preemption(Process *processes, int process_count, CPU *cpus, in
 void assign_processes_to_idle_cpus(Process *processes, int process_count, CPU *cpus, int cpu_count,
                                 Algorithm algorithm, ReadyQueue *ready_queue, int current_time) {
     // TODO: Select and assign processes to idle CPUs according to the chosen algorithm
+
+    (void) process_count;
+    (void) algorithm;
+    (void) ready_queue;
     // Each algorithm has different process selection criteria
     // Be careful not to assign the same process to multiple CPUs
 
@@ -825,8 +834,8 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         // Enqueue newly arrived processes for Round Robin
         if (algorithm == RR) {
             for (int i = 0; i < arrival_count; i++) {
-                // enqueue(&ready_queue_rr, arrived_indices[i]);
                 enqueue(&FCFSQ, arrived_indices[i]);
+                // enqueue_priority3(&FCFSQ, arrived_indices[i], processes);
             }
             handle_rr_quantum_expiry(processes, cpus, cpu_count, time_quantum, &ready_queue_rr, current_time);
         }
