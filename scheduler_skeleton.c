@@ -826,7 +826,7 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         if (algorithm == RR) {
             for (int i = 0; i < arrival_count; i++) {
                 // enqueue(&ready_queue_rr, arrived_indices[i]);
-                enqueue_priority3(&FCFSQ, arrived_indices[i], processes);
+                enqueue(&FCFSQ, arrived_indices[i]);
             }
             handle_rr_quantum_expiry(processes, cpus, cpu_count, time_quantum, &ready_queue_rr, current_time);
         }
