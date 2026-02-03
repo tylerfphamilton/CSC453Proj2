@@ -419,6 +419,74 @@ def create_test_files() -> Dict[str, str]:
         f.write("4 3 1 3\n")      # Medium priority
         f.write("5 4 2 2\n")      # Low-medium priority
     
+        # --- NEW EDGE-CASE TEST FILES ---
+
+    # Idle gap before first arrival (CPU should be idle initially)
+    test_files['idle_gap'] = 'test_processes_idle_gap.txt'
+    with open(test_files['idle_gap'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 3 2 1\n")
+        f.write("2 5 1 1\n")
+
+    # More CPUs than processes + simultaneous arrivals (tests dispatch + idle CPUs)
+    test_files['few_procs_many_cpus'] = 'test_processes_few_procs_many_cpus.txt'
+    with open(test_files['few_procs_many_cpus'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 0 4 1\n")
+        f.write("2 0 2 2\n")
+        f.write("3 0 1 3\n")
+
+    # FCFS input file intentionally unsorted by arrival (scheduler must not trust file order)
+    test_files['unsorted_arrivals'] = 'test_processes_unsorted_arrivals.txt'
+    with open(test_files['unsorted_arrivals'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("2 5 1 1\n")
+        f.write("1 0 3 1\n")
+        f.write("3 2 2 1\n")
+
+    # SJF tie on burst: choose higher priority, then lower PID
+    test_files['sjf_tie_priority'] = 'test_processes_sjf_tie_priority.txt'
+    with open(test_files['sjf_tie_priority'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 0 3 1\n")
+        f.write("2 0 3 5\n")
+        f.write("3 0 1 2\n")
+
+    # SRTF multiple preemption chain
+    test_files['srtf_preempt_chain'] = 'test_processes_srtf_preempt_chain.txt'
+    with open(test_files['srtf_preempt_chain'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 0 8 1\n")
+        f.write("2 1 4 1\n")
+        f.write("3 2 2 1\n")
+
+    # SRTF tie on remaining time: break tie via priority, then PID
+    test_files['srtf_equal_remaining'] = 'test_processes_srtf_equal_remaining.txt'
+    with open(test_files['srtf_equal_remaining'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 0 4 1\n")
+        f.write("2 1 3 5\n")
+
+    # Single process that arrives late (tests idle and correctness of stats)
+    test_files['single_late'] = 'test_processes_single_late.txt'
+    with open(test_files['single_late'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 5 3 1\n")
+
+    # RR quantum=1 with simultaneous arrivals (tests extreme switching + tie-breaking)
+    test_files['rr_q1_simul'] = 'test_processes_rr_q1_simul.txt'
+    with open(test_files['rr_q1_simul'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 0 2 1\n")
+        f.write("2 0 2 2\n")
+
+    # RR with idle gap then multi-quantum completion
+    test_files['rr_idle_single'] = 'test_processes_rr_idle_single.txt'
+    with open(test_files['rr_idle_single'], 'w') as f:
+        f.write("# PID Arrival Burst Priority\n")
+        f.write("1 3 3 1\n")
+
+
     return test_files
 
 
@@ -544,6 +612,62 @@ def define_test_cases(test_files: Dict[str, str]) -> List[TestCase]:
                 ]
             }
         ),
+                # FCFS with initial idle gap
+        (
+            "FCFS_IDLE_GAP_1CPU", "FCFS", 1, 0, test_files['idle_gap'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '3', 'Burst': '2', 'Priority': '1', 'Start': '3', 'Finish': '5', 'Turnaround': '2', 'Waiting': '0', 'Response': '0'},
+                    {'PID': '2', 'Arrival': '5', 'Burst': '1', 'Priority': '1', 'Start': '5', 'Finish': '6', 'Turnaround': '1', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '3', 'IdleTime': '3', 'Utilization%': '50.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '1.50', 'AvgWaiting': '0.00', 'AvgResponse': '0.00'}
+                ]
+            }
+        ),
+
+        # FCFS with more CPUs than processes (simultaneous arrivals)
+        (
+            "FCFS_4CPU_FEW_PROCS", "FCFS", 4, 0, test_files['few_procs_many_cpus'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '0', 'Burst': '4', 'Priority': '1', 'Start': '0', 'Finish': '4', 'Turnaround': '4', 'Waiting': '0', 'Response': '0'},
+                    {'PID': '2', 'Arrival': '0', 'Burst': '2', 'Priority': '2', 'Start': '0', 'Finish': '2', 'Turnaround': '2', 'Waiting': '0', 'Response': '0'},
+                    {'PID': '3', 'Arrival': '0', 'Burst': '1', 'Priority': '3', 'Start': '0', 'Finish': '1', 'Turnaround': '1', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '1', 'IdleTime': '3', 'Utilization%': '25.00'},
+                    {'CPU_ID': '1', 'BusyTime': '2', 'IdleTime': '2', 'Utilization%': '50.00'},
+                    {'CPU_ID': '2', 'BusyTime': '4', 'IdleTime': '0', 'Utilization%': '100.00'},
+                    {'CPU_ID': '3', 'BusyTime': '0', 'IdleTime': '4', 'Utilization%': '0.00'},
+                ],
+                'average': [
+                    {'AvgTurnaround': '2.33', 'AvgWaiting': '0.00', 'AvgResponse': '0.00'}
+                ]
+            }
+        ),
+
+        # FCFS with unsorted input file (must schedule by arrival, not file order)
+        (
+            "FCFS_UNSORTED_INPUT", "FCFS", 1, 0, test_files['unsorted_arrivals'],
+            {
+               'process': [
+                    {'PID': '2', 'Arrival': '5', 'Burst': '1', 'Priority': '1', 'Start': '5', 'Finish': '6', 'Turnaround': '1', 'Waiting': '0', 'Response': '0'},
+                    {'PID': '1', 'Arrival': '0', 'Burst': '3', 'Priority': '1', 'Start': '0', 'Finish': '3', 'Turnaround': '3', 'Waiting': '0', 'Response': '0'},
+                    {'PID': '3', 'Arrival': '2', 'Burst': '2', 'Priority': '1', 'Start': '3', 'Finish': '5', 'Turnaround': '3', 'Waiting': '1', 'Response': '1'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '6', 'IdleTime': '0', 'Utilization%': '100.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '2.33', 'AvgWaiting': '0.33', 'AvgResponse': '0.33'}
+                ]
+            }
+        ),
+
     ]
 
     sjf_tests = [
@@ -577,6 +701,41 @@ def define_test_cases(test_files: Dict[str, str]) -> List[TestCase]:
                 'average': [{'AvgTurnaround': '6.00', 'AvgWaiting': '3.00', 'AvgResponse': '3.00'}]
             }
         ),
+                # SJF with initial idle gap
+        (
+            "SJF_IDLE_GAP_1CPU", "SJF", 1, 0, test_files['idle_gap'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '3', 'Burst': '2', 'Priority': '1', 'Start': '3', 'Finish': '5', 'Turnaround': '2', 'Waiting': '0', 'Response': '0'},
+                    {'PID': '2', 'Arrival': '5', 'Burst': '1', 'Priority': '1', 'Start': '5', 'Finish': '6', 'Turnaround': '1', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '3', 'IdleTime': '3', 'Utilization%': '50.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '1.50', 'AvgWaiting': '0.00', 'AvgResponse': '0.00'}
+                ]
+            }
+        ),
+
+        # SJF tie on burst length: break tie by priority, then PID
+        (
+            "SJF_TIE_PRIORITY_PID", "SJF", 1, 0, test_files['sjf_tie_priority'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '0', 'Burst': '3', 'Priority': '1', 'Start': '4', 'Finish': '7', 'Turnaround': '7', 'Waiting': '4', 'Response': '4'},
+                    {'PID': '2', 'Arrival': '0', 'Burst': '3', 'Priority': '5', 'Start': '1', 'Finish': '4', 'Turnaround': '4', 'Waiting': '1', 'Response': '1'},
+                    {'PID': '3', 'Arrival': '0', 'Burst': '1', 'Priority': '2', 'Start': '0', 'Finish': '1', 'Turnaround': '1', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '7', 'IdleTime': '0', 'Utilization%': '100.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '4.00', 'AvgWaiting': '1.67', 'AvgResponse': '1.67'}
+                ]
+            }
+        ),
+
     ]
 
     srtf_tests = [
@@ -676,6 +835,57 @@ def define_test_cases(test_files: Dict[str, str]) -> List[TestCase]:
                 ]
             }
         ),
+                # SRTF preemption chain (multiple preempts)
+        (
+            "SRTF_PREEMPT_CHAIN", "SRTF", 1, 0, test_files['srtf_preempt_chain'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '0', 'Burst': '8', 'Priority': '1', 'Start': '0', 'Finish': '14', 'Turnaround': '14', 'Waiting': '6', 'Response': '0'},
+                    {'PID': '2', 'Arrival': '1', 'Burst': '4', 'Priority': '1', 'Start': '1', 'Finish': '7', 'Turnaround': '6', 'Waiting': '2', 'Response': '0'},
+                    {'PID': '3', 'Arrival': '2', 'Burst': '2', 'Priority': '1', 'Start': '2', 'Finish': '4', 'Turnaround': '2', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '14', 'IdleTime': '0', 'Utilization%': '100.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '7.33', 'AvgWaiting': '2.67', 'AvgResponse': '0.00'}
+                ]
+            }
+        ),
+
+        # SRTF tie on remaining time: priority breaks tie, then PID
+        (
+            "SRTF_TIE_REMAIN_PRIORITY", "SRTF", 1, 0, test_files['srtf_equal_remaining'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '0', 'Burst': '4', 'Priority': '1', 'Start': '0', 'Finish': '7', 'Turnaround': '7', 'Waiting': '3', 'Response': '0'},
+                    {'PID': '2', 'Arrival': '1', 'Burst': '3', 'Priority': '5', 'Start': '1', 'Finish': '4', 'Turnaround': '3', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '7', 'IdleTime': '0', 'Utilization%': '100.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '5.00', 'AvgWaiting': '1.50', 'AvgResponse': '0.00'}
+                ]
+            }
+        ),
+
+        # SRTF single process arrives late (idle time + start/finish correctness)
+        (
+            "SRTF_SINGLE_LATE", "SRTF", 1, 0, test_files['single_late'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '5', 'Burst': '3', 'Priority': '1', 'Start': '5', 'Finish': '8', 'Turnaround': '3', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '3', 'IdleTime': '5', 'Utilization%': '37.50'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '3.00', 'AvgWaiting': '0.00', 'AvgResponse': '0.00'}
+                ]
+            }
+        ),
+
     ]
 
     rr_tests = [
@@ -727,6 +937,39 @@ def define_test_cases(test_files: Dict[str, str]) -> List[TestCase]:
                 ]
             }
         ),
+                # RR quantum=1 with simultaneous arrivals (stress switching + tie-breaking)
+        (
+            "RR_1CPU_Q1_SIMUL", "RR", 1, 1, test_files['rr_q1_simul'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '0', 'Burst': '2', 'Priority': '1', 'Start': '1', 'Finish': '4', 'Turnaround': '4', 'Waiting': '2', 'Response': '1'},
+                    {'PID': '2', 'Arrival': '0', 'Burst': '2', 'Priority': '2', 'Start': '0', 'Finish': '3', 'Turnaround': '3', 'Waiting': '1', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '4', 'IdleTime': '0', 'Utilization%': '100.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '3.50', 'AvgWaiting': '1.50', 'AvgResponse': '0.50'}
+                ]
+            }
+        ),
+
+        # RR with idle gap then multi-quantum completion
+        (
+            "RR_1CPU_IDLE_GAP_Q2", "RR", 1, 2, test_files['rr_idle_single'],
+            {
+                'process': [
+                    {'PID': '1', 'Arrival': '3', 'Burst': '3', 'Priority': '1', 'Start': '3', 'Finish': '6', 'Turnaround': '3', 'Waiting': '0', 'Response': '0'},
+                ],
+                'cpu': [
+                    {'CPU_ID': '0', 'BusyTime': '3', 'IdleTime': '3', 'Utilization%': '50.00'}
+                ],
+                'average': [
+                    {'AvgTurnaround': '3.00', 'AvgWaiting': '0.00', 'AvgResponse': '0.00'}
+                ]
+            }
+        ),
+
     ]
 
     # Combine all tests

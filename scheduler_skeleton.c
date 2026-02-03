@@ -298,6 +298,66 @@ void enqueue_priority2(ReadyQueue *q, int process_idx , Process *processes){
     //print_queue(q);
 }
 
+//this is the last one i swear
+void enqueue_priority3(ReadyQueue *q, int process_idx , Process *processes){
+    if (q->size >= MAX_PROCESSES) {
+        fprintf(stderr, "Error: Ready queue overflow!\n");
+        return;
+    }
+
+    if (q->rear == -1){
+        enqueue(q , process_idx);
+        return;
+    }
+
+    int cur = q->front; 
+    int new_run_time = processes[process_idx].burst_time - processes[process_idx].remaining_time;
+    int new_arr_time = processes[process_idx].arrival_time;
+    int new_priority = processes[process_idx].priority; 
+    int new_pid = processes[process_idx].pid;
+
+    // scan queue from front to rear
+    while (cur != (q->rear + 1) % MAX_PROCESSES){
+        int cur_run_time = processes[q->process_indices[cur]].burst_time -processes[q->process_indices[cur]].remaining_time;
+        int cur_arr_time = processes[q->process_indices[cur]].arrival_time;
+        int cur_priority = processes[q->process_indices[cur]].priority;
+        int cur_pid = processes[q->process_indices[cur]].pid;
+
+        if ( (new_run_time < cur_run_time) ||
+        (new_run_time == cur_run_time && new_arr_time < cur_arr_time) ||
+        (new_run_time == cur_run_time && new_arr_time == cur_arr_time && new_priority > cur_priority) ||
+        (new_run_time == cur_run_time && new_arr_time == cur_arr_time && new_priority == cur_priority && new_pid < cur_pid)){
+            break;
+        }
+        cur = (cur + 1) % MAX_PROCESSES;
+    }
+
+    if (cur == (q->rear + 1) % MAX_PROCESSES){  
+        enqueue(q , process_idx);
+        return;
+    }
+
+    q->rear = (q->rear + 1) % MAX_PROCESSES;    
+
+    int temp = q->process_indices[cur];
+    q->process_indices[cur] = process_idx;
+
+    int temp2;
+    int nextcur = (cur + 1) % MAX_PROCESSES;
+
+    while (cur != q->rear){                      // FIX: clearer stop condition
+        temp2 = q->process_indices[nextcur];
+        q->process_indices[nextcur] = temp;
+        temp = temp2;
+
+        cur = nextcur;                        
+        nextcur = (cur + 1) % MAX_PROCESSES;  
+    }
+
+    q->size++;
+    //print_queue(q);
+}
+
 /**
  * Remove and return the next process index from the ready queue
  * Returns -1 if queue is empty
@@ -766,7 +826,7 @@ void simulate(Process *processes, int process_count, int cpu_count, Algorithm al
         if (algorithm == RR) {
             for (int i = 0; i < arrival_count; i++) {
                 // enqueue(&ready_queue_rr, arrived_indices[i]);
-                enqueue(&FCFSQ, arrived_indices[i]);
+                enqueue_priority3(&FCFSQ, arrived_indices[i], processes);
             }
             handle_rr_quantum_expiry(processes, cpus, cpu_count, time_quantum, &ready_queue_rr, current_time);
         }
